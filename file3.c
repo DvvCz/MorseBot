@@ -7,6 +7,12 @@
 #include "servo.h"
 #include "ping.h"
 
+#define PIN_S0 0
+#define PIN_S1 1
+#define PIN_S2 2
+#define PIN_S3 3
+#define PIN_OUT 4
+
 /// Combinations:
 /// LOW	LOW	Red
 /// LOW	HIGH Blue
@@ -15,6 +21,8 @@
 
 #define PULSE_LOW 0
 #define PULSE_HIGH 1
+
+inline void loadColors() {}
 
 inline int getRedPw() {
 	// LOW, LOW (RED)
