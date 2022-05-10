@@ -14,18 +14,20 @@
 #define WORD_LEN 2700 // ms
 #define DOWNTIME_LEN 150
 
+#define SCAN_TIME 15000 // How long to look for morse code for in milliseconds (15000 = 15 seconds.)
+
 // Might need to be different?
 #define PAUSE_TIME DOWNTIME_LEN
 
-// R, G, B
+// R, G, B (255 - 0)
 #define COLOR_OFF() pSetLED(0, 0, 255); // blue (detected light off)
 #define COLOR_ON() pSetLED(255, 0, 255); // purple (detected light)
 #define COLOR_START() pSetLED(0, 255, 0); // green (started scanning for morse code)
 #define COLOR_FAIL() pSetLED(255, 255, 0); // yellow (failed to get color result from pixy camera)
 
-// Baud rate between the robot and the pixy camera through UART.
+// Baud rate between the robot and the pixy camera through UART. (Default 19200)
 // Apparently the max is 230 kbaud (230,000 ??) https://docs.pixycam.com/wiki/doku.php?id=wiki:v2:porting_guide
-#define PIXY_BAUD 19200
+#define PIXY_BAUD 20000
 
 /*
 	Configs End
@@ -93,7 +95,7 @@ int main() {
 	int last_status = CNT;
 
 	COLOR_START();
-	while ( elapsed(before) < 15000 ) {
+	while ( elapsed(before) < SCAN_TIME ) {
 		if ( loadColors() != LOADCOL_OK ) {
 			COLOR_FAIL();
 
