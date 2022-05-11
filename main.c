@@ -1,7 +1,8 @@
 /*
 	Configs Start
 */
-#define PIN_AUDIO 27
+#define PIN_AUDIO_L 26
+#define PIN_AUDIO_R 27
 
 // These are flipped for some reason :/
 // rx is PIN_TX, tx is PIN_RX. If the robot randomly stops working try swapping these.
@@ -48,7 +49,7 @@ talk *TTS;
 void initTTS() {
 	// L, R pins.
 	// Left as -1 for mono audio to pin 27.
-	TTS = talk_run(-1, PIN_AUDIO);
+	TTS = talk_run(PIN_AUDIO_L, PIN_AUDIO_R);
 	talk_set_speaker(TTS, 1, 100);
 }
 
@@ -73,8 +74,25 @@ int main() {
 	channel = fdserial_open(PIN_RX, PIN_TX, 0, PIXY_BAUD);
 	assert(channel != NULL && "Failed to create channel");
 
-	// https://docs.pixycam.com/wiki/doku.php?id=wiki:v2:porting_guide
+	/*
+		TTS TESTING AREA START
+		You can see all of the different combinations of things you can do here
+		https://github.com/parallaxinc/Simple-Libraries/blob/master/Learn/Simple%20Libraries/Audio/libtext2speech/text2speech.h#L170-L248
+		For what you give to the "say" function
+	*/
 
+	initTTS();
+	setVolume(500);
+	say("Test Test Test Test Quiet now (Test Test) <<<<<<<<<<<<<<LOUD>>>>>>>>>>>>");
+	spell("abcdefghijklmnopqrstuvwxyz");
+
+	while (1) {} // Remove this line if you want it to not stop the robot after talking.
+
+	/*
+		TTS TESTING AREA END
+	*/
+
+	// https://docs.pixycam.com/wiki/doku.php?id=wiki:v2:porting_guide
 	// Pixy2 Demo Code
 	println("Pixy2 Camera Demo");
 
@@ -153,6 +171,11 @@ int main() {
 	if ( translateMorse(buf, out) == MORSE_OK ) {
 		print("Success: [%s]\n", out);
 		pSetLED(0, 255, 0);
+
+		// Morse code was translated successfully.
+		// Call "spell" tts on the output message.
+		// Can also try "say"
+		spell( out );
 	} else {
 		print("Failed!\n");
 		pSetLED(255, 0, 0);
