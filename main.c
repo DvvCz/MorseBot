@@ -25,6 +25,7 @@
 #define COLOR_ON() pSetLED(255, 0, 255); // purple (detected light)
 #define COLOR_START() pSetLED(0, 255, 0); // green (started scanning for morse code)
 #define COLOR_FAIL() pSetLED(255, 255, 0); // yellow (failed to get color result from pixy camera)
+#define COLOR_WAIT() pSetLED(0, 0, 0); // no color (waiting for signal to start scanning)
 
 // Baud rate between the robot and the pixy camera through UART. (Default 19200)
 // Apparently the max is 230 kbaud (230,000 ??) https://docs.pixycam.com/wiki/doku.php?id=wiki:v2:porting_guide
@@ -34,6 +35,7 @@
 	Configs End
 */
 
+// These are the only dependencies besides fdserial.h (Need to keep the binary fairly small for the robot.)
 #include <assert.h>
 #include "simpletools.h"
 #include "text2speech.h"
@@ -74,30 +76,9 @@ int main() {
 	channel = fdserial_open(PIN_RX, PIN_TX, 0, PIXY_BAUD);
 	assert(channel != NULL && "Failed to create channel");
 
-	/*
-		TTS TESTING AREA START
-		You can see all of the different combinations of things you can do here
-		https://github.com/parallaxinc/Simple-Libraries/blob/master/Learn/Simple%20Libraries/Audio/libtext2speech/text2speech.h#L170-L248
-		For what you give to the "say" function
-	*/
-
-	initTTS();
-	setVolume(500);
-	say("Test Test Test Test Quiet now (Test Test) <<<<<<<<<<<<<<LOUD>>>>>>>>>>>>");
-	spell("abcdefghijklmnopqrstuvwxyz");
-
-	while (1) {} // Remove this line if you want it to not stop the robot after talking.
-
-	/*
-		TTS TESTING AREA END
-	*/
-
 	// https://docs.pixycam.com/wiki/doku.php?id=wiki:v2:porting_guide
 	// Pixy2 Demo Code
 	println("Pixy2 Camera Demo");
-
-	// Track white lines on dark background, not the opposite. 
-	//int8_t moderes = lSetMode( LINE_MODE_WHITE_LINE );
 
 	pGetResolution(&ROBOT_WIDTH, &ROBOT_HEIGHT);
 	printlnf("Resolution: %dx%d", ROBOT_WIDTH, ROBOT_HEIGHT);
@@ -112,6 +93,33 @@ int main() {
 	int before = CNT;
 	int last_status = CNT;
 
+	uint8_t r;
+	uint8_t g;
+	uint8_t b;
+
+	COLOR_WAIT();
+	do {
+		if ( loadColors() != LOADCOL_OK ) {
+			pause(200);
+			continue;
+		}
+
+		/*
+			47 255 51
+			50 255 50
+			48 255 48
+			48 255 48
+		*/
+
+		// Wait until we see green. That is the signal to start scanning for morse code.
+		r = getRed();
+		g = getGreen();
+		b = getBlue();
+
+		print("%d %d %d\n", r, g, b);
+		pause(200);
+	} while( r > 60 || g < 230 || b > 60 );
+
 	COLOR_START();
 	while ( elapsed(before) < SCAN_TIME ) {
 		if ( loadColors() != LOADCOL_OK ) {
@@ -121,9 +129,9 @@ int main() {
 			continue;
 		};
 
-		uint8_t r = getRed();
-		uint8_t g = getGreen();
-		uint8_t b = getBlue();
+		r = getRed();
+		g = getGreen();
+		b = getBlue();
 
 		status_for = elapsed( last_status );
 
@@ -165,7 +173,7 @@ int main() {
 	}
 	buf[pos] = '\0';
 
-	print("Buf: %s", buf);
+	print("Buf: %s\n", buf);
 
 	char out[] = "";
 	if ( translateMorse(buf, out) == MORSE_OK ) {
