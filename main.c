@@ -13,9 +13,10 @@
 #define CHAR_LEN 300
 #define LONG_LEN 900
 #define WORD_LEN 2700 // ms
-#define DOWNTIME_LEN 150
+#define DOWNTIME_LEN 50
 
-#define SCAN_TIME 15000 // How long to look for morse code for in milliseconds (15000 = 15 seconds.)
+#define SCAN_TIME 40000 // max time to scan for morse code for in milliseconds (40000 = 40 seconds)
+#define END_LEN WORD_LEN * 3
 
 // Might need to be different?
 #define PAUSE_TIME DOWNTIME_LEN
@@ -29,7 +30,7 @@
 
 // Baud rate between the robot and the pixy camera through UART. (Default 19200)
 // Apparently the max is 230 kbaud (230,000 ??) https://docs.pixycam.com/wiki/doku.php?id=wiki:v2:porting_guide
-#define PIXY_BAUD 20000
+#define PIXY_BAUD 19200
 
 /*
 	Configs End
@@ -90,9 +91,6 @@ int main() {
 	char buf[1000] = "";
 	uint16_t pos = 0;
 
-	int before = CNT;
-	int last_status = CNT;
-
 	uint8_t r;
 	uint8_t g;
 	uint8_t b;
@@ -121,6 +119,10 @@ int main() {
 	} while( r > 60 || g < 230 || b > 60 );
 
 	COLOR_START();
+
+	int before = CNT;
+	int last_status = CNT;
+
 	while ( elapsed(before) < SCAN_TIME ) {
 		if ( loadColors() != LOADCOL_OK ) {
 			COLOR_FAIL();
@@ -135,14 +137,14 @@ int main() {
 
 		status_for = elapsed( last_status );
 
-		if ( (r + g + b) / 3 > 220 ) {
-			// Light ON
+		if ( r >= 200 && g >= 200 && b >= 200 ) {
+			// Light ON (Was OFF last time)
 			if (!is_light) {
-				if (status_for > WORD_LEN) {
+				if (status_for >= WORD_LEN) {
 					buf[pos++] = ' ';
 					buf[pos++] = '/';
 					buf[pos++] = ' ';
-				} else if (status_for > CHAR_LEN) {
+				} else if (status_for >= CHAR_LEN) {
 					buf[pos++] = ' ';
 				} else {
 					// Skip.
@@ -156,18 +158,27 @@ int main() {
 
 				COLOR_ON();
 			}
-		} else if (is_light) {
-			// Light OFF (Was ON last time)
-			if (status_for > LONG_LEN) {
-				buf[pos++] = '-';
-			} else {
-				buf[pos++] = '.';
-			}
+		} else { //if ( r <= 90 && g <= 90 && b <= 90 ) {
+			// Light OFF
+			if (is_light) {
+				// Light was ON last time
+				if (status_for >= LONG_LEN) {
+					buf[pos++] = '-';
+				} else {
+					buf[pos++] = '.';
+				}
 
-			last_status = CNT;
-			COLOR_OFF();
-			is_light = false;
-		}
+				last_status = CNT;
+				COLOR_OFF();
+				is_light = false;
+			} else {
+				if ( status_for >= END_LEN ) break;
+
+				printlnf("LOFF: %d %d", status_for, LONG_LEN);
+			}
+		} /*else {
+			print("Neither %d %d %d", r, g, b);
+		}*/
 
 		pause(PAUSE_TIME);
 	}
