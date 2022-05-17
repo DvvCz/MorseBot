@@ -16,7 +16,7 @@
 #define DOWNTIME_LEN 50
 
 #define SCAN_TIME 40000 // max time to scan for morse code for in milliseconds (40000 = 40 seconds)
-#define END_LEN WORD_LEN * 3
+#define END_LEN WORD_LEN * 2
 
 // Might need to be different?
 #define PAUSE_TIME DOWNTIME_LEN
@@ -44,7 +44,7 @@
 
 int ROBOT_WIDTH, ROBOT_HEIGHT;
 
-#include "file1.c"
+#include "file4.c"
 #include "file5.c"
 
 talk *TTS;
@@ -84,109 +84,85 @@ int main() {
 	pGetResolution(&ROBOT_WIDTH, &ROBOT_HEIGHT);
 	printlnf("Resolution: %dx%d", ROBOT_WIDTH, ROBOT_HEIGHT);
 
-	// How long the light has been either off or on.
-	bool is_light = false;
-	int status_for = 0;
 
-	char buf[1000] = "";
-	uint16_t pos = 0;
-
-	uint8_t r;
-	uint8_t g;
-	uint8_t b;
-
+	uint8_t r, g, b;
 	COLOR_WAIT();
+
+	// Wait until we see green. That is the signal to start scanning for morse code. (and to stop)
 	do {
-		if ( loadColors() != LOADCOL_OK ) {
-			pause(200);
-			continue;
-		}
-
-		/*
-			47 255 51
-			50 255 50
-			48 255 48
-			48 255 48
-		*/
-
-		// Wait until we see green. That is the signal to start scanning for morse code.
-		r = getRed();
-		g = getGreen();
-		b = getBlue();
-
-		print("%d %d %d\n", r, g, b);
-		pause(200);
+		if ( vGetRGB( ROBOT_WIDTH / 2, ROBOT_HEIGHT / 2, &r, &g, &b, true ) != PIXY_RESULT_OK ) break;
+		pause(PAUSE_TIME);
 	} while( r > 60 || g < 230 || b > 60 );
 
 	COLOR_START();
 
+	pause(1000); // Wait for initial green to change]
+
+	COLOR_FAIL();
+
 	int before = CNT;
-	int last_status = CNT;
+	int light_on = false;
+	int last = CNT; // Time current status was achieved.
+	int status_for = 0;
+
+	char buf[1000] = "";
+
+	int pos = 0;
 
 	while ( elapsed(before) < SCAN_TIME ) {
-		if ( loadColors() != LOADCOL_OK ) {
-			COLOR_FAIL();
+		if ( vGetRGB( ROBOT_WIDTH / 2, ROBOT_HEIGHT / 2, &r, &g, &b, true ) != PIXY_RESULT_OK ) break;
 
-			pause(200);
-			continue;
-		};
+		status_for = elapsed(last);
 
-		r = getRed();
-		g = getGreen();
-		b = getBlue();
-
-		status_for = elapsed( last_status );
-
-		if ( r >= 200 && g >= 200 && b >= 200 ) {
-			// Light ON (Was OFF last time)
-			if (!is_light) {
+		if ( r >= 180 && g >= 180 && b >= 180 ) {
+			/*if (!light_on) {
+				// Light was off and just turned on
 				if (status_for >= WORD_LEN) {
 					buf[pos++] = ' ';
 					buf[pos++] = '/';
 					buf[pos++] = ' ';
 				} else if (status_for >= CHAR_LEN) {
 					buf[pos++] = ' ';
-				} else {
-					// Skip.
-					// buf[pos] = '';
-					// pos++;
 				}
 
-				last_status = CNT;
-				is_light = true;
-				status_for = 0;
-
 				COLOR_ON();
-			}
-		} else { //if ( r <= 90 && g <= 90 && b <= 90 ) {
-			// Light OFF
-			if (is_light) {
-				// Light was ON last time
+
+				last = CNT;
+				light_on = true;
+			}*/
+			buf[pos++] = '.';
+		} else if ( r < 60 && g > 230 && b < 60 ) {
+			// Green Light. END of Morse code stream.
+			buf[pos++] = '!';
+			break;
+		} else { // if ( r <= 90 && g <= 90 && b <= 90 ) {
+			// Light was on and just turned off
+			/*if (light_on) {
 				if (status_for >= LONG_LEN) {
+					print("long");
 					buf[pos++] = '-';
 				} else {
+					print("char");
 					buf[pos++] = '.';
 				}
 
-				last_status = CNT;
 				COLOR_OFF();
-				is_light = false;
-			} else {
-				if ( status_for >= END_LEN ) break;
 
-				printlnf("LOFF: %d %d", status_for, LONG_LEN);
-			}
-		} /*else {
-			print("Neither %d %d %d", r, g, b);
-		}*/
+				last = CNT;
+				light_on = false;
+			}*/
+			buf[pos++] = ' ';
+		}
 
 		pause(PAUSE_TIME);
 	}
 	buf[pos] = '\0';
 
-	print("Buf: %s\n", buf);
+	COLOR_START();
 
-	char out[] = "";
+	printlnf("\nBuf: [%s]", buf);
+
+	/*char out[] = "";
 	if ( translateMorse(buf, out) == MORSE_OK ) {
 		print("Success: [%s]\n", out);
 		pSetLED(0, 255, 0);
@@ -198,5 +174,5 @@ int main() {
 	} else {
 		print("Failed!\n");
 		pSetLED(255, 0, 0);
-	}
+	}*/
 }
