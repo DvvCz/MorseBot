@@ -10,12 +10,12 @@
 #define PIN_TX 10
 
 // Try to sync these with the website
-#define CHAR_LEN 300
-#define LONG_LEN 900
+#define CHAR_LEN 100
+#define LONG_LEN 800
 #define WORD_LEN 2700 // ms
-#define DOWNTIME_LEN 50
+#define DOWNTIME_LEN 100
 
-#define SCAN_TIME 40000 // max time to scan for morse code for in milliseconds (40000 = 40 seconds)
+#define SCAN_TIME 10000 // max time to scan for morse code for in milliseconds (40000 = 40 seconds)
 #define END_LEN WORD_LEN * 2
 
 // Might need to be different?
@@ -73,6 +73,29 @@ int elapsed(int cnt) {
 	return (CNT - cnt) / st_pauseTicks;
 }
 
+/*
+-off 0 10 0
+-on 0 645
+-off 1 80 0
+-on 1 403
+-off 2 80 0
+-on 2 241
+-off 3 80 0
+-on 3 967
+-off 4 80 0
+-on 4 967
+-off 5 80 0
+-on 5 1128
+-off 6 161 0
+-on 6 403
+-off 7 80 0
+-on 7 403
+-off 8 80 0
+-on 8 403
+-off 9 80 0
+Buf: [...---...!]
+*/
+
 int main() {
 	channel = fdserial_open(PIN_RX, PIN_TX, 0, PIXY_BAUD);
 	assert(channel != NULL && "Failed to create channel");
@@ -112,46 +135,39 @@ int main() {
 	while ( elapsed(before) < SCAN_TIME ) {
 		if ( vGetRGB( ROBOT_WIDTH / 2, ROBOT_HEIGHT / 2, &r, &g, &b, true ) != PIXY_RESULT_OK ) break;
 
-		status_for = elapsed(last);
-
 		if ( r >= 180 && g >= 180 && b >= 180 ) {
-			/*if (!light_on) {
-				// Light was off and just turned on
-				if (status_for >= WORD_LEN) {
-					buf[pos++] = ' ';
-					buf[pos++] = '/';
-					buf[pos++] = ' ';
-				} else if (status_for >= CHAR_LEN) {
-					buf[pos++] = ' ';
+			if (!light_on) {
+				if ( elapsed(last) >= WORD_LEN ) {
+					buf[pos] = '/';
+					pos++;
+				} else if ( elapsed(last) >= 300 ) {
+					// Seems to take 121 ms for each downtime space.
+					buf[pos] = ' ';
+					pos++;
 				}
 
-				COLOR_ON();
+				print("-off %d %d %b", pos, elapsed(last), elapsed(last) >= LONG_LEN);
 
 				last = CNT;
 				light_on = true;
-			}*/
-			buf[pos++] = '.';
-		} else if ( r < 60 && g > 230 && b < 60 ) {
+			}
+		} else if ( r < 90 && g > 200 && b < 90 ) {
 			// Green Light. END of Morse code stream.
 			buf[pos++] = '!';
 			break;
 		} else { // if ( r <= 90 && g <= 90 && b <= 90 ) {
-			// Light was on and just turned off
-			/*if (light_on) {
-				if (status_for >= LONG_LEN) {
-					print("long");
-					buf[pos++] = '-';
+			if (light_on) {
+				print("-on %d %d", pos, elapsed(last));
+				if (elapsed(last) >= LONG_LEN) {
+					buf[pos] = '-';
 				} else {
-					print("char");
-					buf[pos++] = '.';
+					buf[pos] = '.';
 				}
-
-				COLOR_OFF();
+				pos++;
 
 				last = CNT;
-				light_on = false;
-			}*/
-			buf[pos++] = ' ';
+				light_on = false; 
+			}
 		}
 
 		pause(PAUSE_TIME);
@@ -162,7 +178,7 @@ int main() {
 
 	printlnf("\nBuf: [%s]", buf);
 
-	/*char out[] = "";
+	char out[] = "";
 	if ( translateMorse(buf, out) == MORSE_OK ) {
 		print("Success: [%s]\n", out);
 		pSetLED(0, 255, 0);
@@ -174,5 +190,5 @@ int main() {
 	} else {
 		print("Failed!\n");
 		pSetLED(255, 0, 0);
-	}*/
+	}
 }
