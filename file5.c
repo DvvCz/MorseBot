@@ -37,8 +37,7 @@ int translateMorse(char* str, char* out) {
 
             word[len] = '\0';
 
-	        #define STRING_TEST(letter, str) if ( t_strcmp(word, str) == 0) { out[pos] = letter; } else
-            print("Got word %s\n", word);
+	        #define STRING_TEST(letter, str) if ( t_strcmp(word, str) == 0) { out[pos++] = letter; } else
 
 			STRING_TEST('a', ".-")
 	    	STRING_TEST('b', "-...")
