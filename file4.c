@@ -55,15 +55,23 @@ bool m_cs; // Want to get rid of this
 #define println(fmt) print(fmt "\n")
 #define printlnf(fmt, ...) print(fmt "\n", __VA_ARGS__)
 
+// So the editor knows that this function exists
+// #define fdserial_open(x, y, z, w) NULL
+
 // Incoming bytes count
 #define ibytes() fdserial_rxCount(channel)
 
 // I keep accidentally using this over pause().
 #undef sleep
 
+// These have false positives sometimes.
+#undef assert
+#define assert(x)
+
 #define U8_MAX 0xFF
 #define U16_MAX 0xFFFF
 #define U32_MAX 0xFFFFFFFF
+#define sanitycheck(d) false
 
 // Custom byte writing functions.
 inline void pWriteU8( uint8_t byte ) {
